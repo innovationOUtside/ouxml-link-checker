@@ -125,7 +125,6 @@ def extract_links_from_doc(courseRoot, unique_links=None):
 
     # Grab some metadata
     metadata = parse_ouxml_metadata(courseRoot)
-    
     sessions = courseRoot.findall('.//Session')
     
     for session in sessions:
@@ -177,6 +176,7 @@ def extract_links_from_docs(docs):
     for doc in docs:
         xml = get_xml_from_doc(doc)
         _doc_links, unique_links = extract_links_from_doc(xml, unique_links)
+        _doc_links['metadata']['file'] = str(doc)
         doc_links.append(_doc_links)
         
     return doc_links, unique_links
@@ -335,6 +335,11 @@ def link_reporter_by_docs(doc_links):
 
 # + tags=["active-ipynb"]
 # bad_link_reports
+# -
+
+# Whilst the JSON file is convenient for storing data, and easy to work with if you know how, a tabular CSV report is probably more useful in many cases.
+#
+# The following is a first quick attempt at a report that contains enough information to be useful when it comes to finding which section of which file each broken link appears in.
 
 # +
 # Crude output report broken link
@@ -346,13 +351,14 @@ def simple_csv_report(links_report, outf='link_report.csv'):
 
     with open(outf, 'w') as f:
         write = csv.writer(f)
-        cols = ['code', 'title', 'item', 'session', 'linktext', 'link', 'error']
+        cols = ['file', 'code', 'title', 'item', 'session', 'linktext', 'link', 'error']
         write.writerow(cols)
 
         for link_report in links_report:
-            row_base = [link_report['metadata']['coursecode'],
-                       link_report['metadata']['coursetitle'],
-                       link_report['metadata']['itemtitle']]
+            row_base = [link_report['metadata']['file'],
+                        link_report['metadata']['coursecode'],
+                        link_report['metadata']['coursetitle'],
+                        link_report['metadata']['itemtitle']]
 
             rows = []
             for session in link_report['sessions']:
@@ -366,6 +372,18 @@ def simple_csv_report(links_report, outf='link_report.csv'):
 # + tags=["active-ipynb"]
 # simple_csv_report(bad_link_reports)
 # !cat link_report.csv
+# -
+
+# To try to make things easier to use, we also define (in the `cli.py` file) a simple command line interface that can call the following function, with a directory path, to run the link checker over links extracted form the `.xml` files in the specified directory.
+#
+# Usage on the command line is then of the form:
+#
+# `ouxml_tools link-check PATH/TO/DIR/CONTAINING/OU-XML_FILES`
+#
+# with three output reports generated:
+#
+# - a csv file report containing minimal broken link information (`broken_links_report.csv`);
+# - complete reports of all link resolution traces and just the broken link resoution traces in `all_links_report.json` and `broken_links_report.json` respectively.
 
 # +
 import json
@@ -384,6 +402,3 @@ def link_check_reporter(path):
         json.dump(bad_link_reports, f)
 
     simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
-# -
-
-
