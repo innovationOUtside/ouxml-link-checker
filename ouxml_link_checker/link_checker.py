@@ -40,6 +40,12 @@ def flatten(el):
     return unicodedata.normalize("NFKD", "".join(result)) or ' '
 
 
+# -
+
+# Iterating through a list of links and making a web request for each one can happen quickly, especially if we are just requesting page headers and not the complete contents of a page.
+#
+# A trick many screenscrapers use is to add a small delay between requests, often randomising the delay times to make it less obvious that a scrape is in play. THhe following function gives a minimal function that helps us play nice when creating lots of web requests.
+
 # +
 # Wait for a short random interval
 # This is so we don't clobber a particular website or the network too badly!
@@ -53,15 +59,19 @@ def play_nice(delay=0.1, min_delay=0.01):
     time.sleep(min_delay + delay*random())
 
 
+# -
+
+# We're going to want to get lists of XML files somehow; the following function will grab the names of files with a particular file suffix (by default, `.xml`) from a directory with a specified path:
+
 # +
 # Get a list of xml files in a folder/directory
 
 import os
 from pathlib import Path
 
-def get_xml_files(path_str='.'):
+def get_xml_files(path_str='.', suffix='.xml'):
     path = Path(path_str)
-    docs = [path/x for x in os.listdir(path) if x.endswith('.xml')]
+    docs = [path/x for x in os.listdir(path) if x.endswith(suffix)]
     return docs
 
 
@@ -70,12 +80,16 @@ def get_xml_files(path_str='.'):
 # get_xml_files('./xml_test')
 # -
 
+# A nod to user feedback on long running jobs where we are perhaps waiting for lots of links to be tested, the `tqdm` package provides a simple way to create progress bars.
+
 # Import a package that displays progress bars nicely
 from tqdm import tqdm
 
 # ## Extract Information From OU-XML
 #
 # Tool(s) to extract links and other information from OU-XML documents.
+
+# To make use of the XML content in a document, we need to open the document, read its contents and then parse it into a strcuture we can work with. Sometimes, we need to clean the document text up a bit before we can parse it...
 
 # +
 # Open an XML file/document, read its contents and parse them as an XML etree object
@@ -97,6 +111,14 @@ def get_xml_from_doc(doc, clean=True):
     xml_root = etree.fromstring(xml)
     return xml_root
 
+
+# -
+
+# Having got the XML into a structure we can work with, we can start to treat it like a simple database from which we can extract different sorts of infomration.
+#
+# OU-XML documents are structured in a particular way, so we can use prior knowledge of that structure to do things like pull out a course/module code and name, as well as the names of different sections in the document. We can use this information to help us report on where in a document we might find a particular broken link if we do discover that it is broken and in need of repair...
+#
+# We also want to extract the links referenced in the document; that is the point of this recipe, after all...
 
 # +
 # Extract metadata and links from a parsed OU-XML document
@@ -227,6 +249,12 @@ def link_reporter(url, display=False, redirect_log=True):
 
     return step_reports
 
+
+# -
+
+# We can run some simple tests to see examples of particualr sorts of errors. Other errors may be discovered when running the link checker over a wider range of resources.
+#
+# We could capture and report on different sorts of status code in specific ways, if that is useful.
 
 # + tags=["active-ipynb"]
 # ## Test link check reports
