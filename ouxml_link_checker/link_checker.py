@@ -374,15 +374,15 @@ def link_check_reporter(path):
     """Run link checks."""
     docs = get_xml_files(path)
     doc_links, unique_links = extract_links_from_docs(docs)
-    
+
     link_reports, bad_link_reports = link_reporter_by_docs(doc_links)
-    
+
     with open('all_links_report.json', 'w') as f:
         json.dump(link_reports, f)
-    
+
     with open('broken_links_report.json', 'w') as f:
         json.dump(bad_link_reports, f)
-        
+
     simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
 # -
 
