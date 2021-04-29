@@ -3,13 +3,13 @@ Scrape links from OU-XML and run link checks over them
 
  
 
-pip3 install --upgrade https://github.com/innovationOUtside/ouxml-link-checker/arch...
+`pip3 install --upgrade https://github.com/innovationOUtside/ouxml-link-checker/archive/refs/heads/main.zip`
 
  
 
 Usage is:
 
-ouxml_tools link-check PATH/TO/DIR/CONTAINING/OU-XML_FILES
+`ouxml_tools link-check PATH/TO/DIR/CONTAINING/OU-XML_FILES`
 
  
 
