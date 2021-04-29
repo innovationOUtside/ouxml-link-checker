@@ -11,6 +11,6 @@ Usage is:
 
 There's a csv file report generated at `broken_links_report.csv` and complete reports in `all_links_report.json` and `broken_links_report.json`
 
-Preview of code and sample outputs of intermediate functions: [`link_checker.ipynb`](https://github.com/innovationOUtside/ouxml-link-checker/blob/main/link_checker.ipynb)
+Preview of code and sample outputs of intermediate functions: [`link_checker.ipynb`](https://github.com/innovationOUtside/ouxml-link-checker/blob/main/link_checker.ipynb) (and a [preview of the same notebook](https://nbviewer.jupyter.org/github/innovationOUtside/ouxml-link-checker/blob/main/link_checker.ipynb) that actually works if/when Github tells you that *Something went wrong*...).
 
  
