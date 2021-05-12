@@ -15,7 +15,7 @@ If you are in the directory containing the OU-XML files, you can simply run:
 
 If the you are in a directory that contains a directory (eg `xmldocs`) that contains the OU-XML docs, you can run:
 
-ouxml_tools link-check xmldocs
+`ouxml_tools link-check xmldocs`
 
 (or replace the name of the directory with the name of your own directory; if the directory name has spaces, specifiy it in quotes, for example `ouxml_tools link-check "OU-XML docs"`).
 
