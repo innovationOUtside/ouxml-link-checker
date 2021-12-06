@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.9.1
+#       jupytext_version: 1.11.5
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -418,10 +418,15 @@ def simple_csv_report(links_report, outf='link_report.csv'):
 # - a csv file report containing minimal broken link information (`broken_links_report.csv`);
 # - complete reports of all link resolution traces and just the broken link resoution traces in `all_links_report.json` and `broken_links_report.json` respectively.
 
+# ## Submitting Links to the Internet Archive
+#
+# To ensure that web page content is available even a website disappears, we can try to archive the content on the Internet Archive.
+#
+# The following function will attempt to submit a URL for archiving on the Internet Archive:
+
 # +
 import json
 import urllib.parse
-
 
 def archive_link(url):
     """Submit link archive request to Interet Archive."""
@@ -432,8 +437,15 @@ def archive_link(url):
     r = requests.get(url_, allow_redirects=True)
     return url, r
 
+
+# -
+
+# It is more likely that we will want to submit multiple URLs to the archiver.
+#
+# Links with various HTTP status codes as described in the link check status report can be included or excluded from he report.
+
 def archive_links(link_reports, include=None, exclude=None):
-    """Submit each unique link in a link report dictionary to the Internet Archive."""
+    """Submit each unique link in a link status report dictionary to the Internet Archive."""
     include = [] if include is None else include
     exclude = [] if exclude is None else exclude
     archived = []
@@ -473,7 +485,9 @@ def archive_links(link_reports, include=None, exclude=None):
         print(f"Excluded: {url}")
     for url in not_valid_url:
         print(f"Not valid URLs: {url}")
-    
+
+
+# We can generate the link status report for links extracted from one or more files, optionally calling the archiver, using the following function:
 
 def link_check_reporter(path, archive=False, strong_archive=False, display=False, redirect_log=True):
     """Run link checks."""
