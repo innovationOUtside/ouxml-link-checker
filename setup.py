@@ -17,6 +17,9 @@ setup(
         'tqdm',
         'lxml'
     ],
+    extras_require={
+        'webshot': ['selenium', 'webdriver-manager']
+    },
     entry_points='''
         [console_scripts]
         ouxml_tools=ouxml_link_checker.cli:cli
