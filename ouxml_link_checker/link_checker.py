@@ -233,12 +233,17 @@ def link_reporter(url, display=False, redirect_log=True):
         print(f"Checking {url}...")
     
     # Make request and follow redirects
-    r = requests.head(url, allow_redirects=True)
+    try:
+        r = requests.head(url, allow_redirects=True)
+    except:
+        r = None
     
+    if r is None:
+        return [(False, url, None, "Error resolving URL")]
+
     # Optionally create a report including each step of redirection/resolution
     steps = r.history + [r] if redirect_log else [r]
     
-    report = {'url': url}
     step_reports = []
     for step in steps:
         step_report = (step.ok, step.url, step.status_code, step.reason)
@@ -252,7 +257,7 @@ def link_reporter(url, display=False, redirect_log=True):
 
 # -
 
-# We can run some simple tests to see examples of particualr sorts of errors. Other errors may be discovered when running the link checker over a wider range of resources.
+# We can run some simple tests to see examples of particular sorts of errors. Other errors may be discovered when running the link checker over a wider range of resources.
 #
 # We could capture and report on different sorts of status code in specific ways, if that is useful.
 
@@ -415,8 +420,57 @@ def simple_csv_report(links_report, outf='link_report.csv'):
 
 # +
 import json
+import urllib.parse
 
-def link_check_reporter(path):
+
+def archive_link(url):
+    """Submit link archive request to Interet Archive."""
+
+    quoted_url = urllib.parse.quote(url)
+    url_ = f"https://web.archive.org/save/{quoted_url}"
+    # Should probably capture response and generate archive request report
+    r = requests.get(url_, allow_redirects=True)
+    return url, r
+
+def archive_links(link_reports, include=None, exclude=None):
+    """Submit each unique link in a link report dictionary to the Internet Archive."""
+    include = [] if include is None else include
+    exclude = [] if exclude is None else exclude
+    archived = []
+    not_archived = []
+    not_valid_url = []
+    link_reports_ = []
+
+    # Generate a list of links we want to archive
+    for link_ in link_reports:
+        # Get status report of last step in forwarded request
+        status = link_reports[link_][-1][2]
+        if status is None:
+            not_valid_url.append(link_)
+            continue
+        # We don't want excluded report status links
+        if status not in exclude:
+            # We want all links or just included links
+            if not include or status in include:
+                link_reports_.append(link_)
+
+    for link_ in tqdm(link_reports_):
+        url, response = archive_link(link_)
+        if response.ok:
+            archived.append(url)
+        else:
+            not_archived.append(url)
+        play_nice()
+
+    for url in archived:
+        print(f"Archived: {url}")
+    for url in not_archived:
+        print(f"Not archived: {url}")
+    for url in not_valid_url:
+        print(f"Not valid URLs: {url}")
+    
+
+def link_check_reporter(path, archive=False, strong_archive=False, display=False, redirect_log=True):
     """Run link checks."""
     docs = get_xml_files(path)
     doc_links, unique_links = extract_links_from_docs(docs)
@@ -430,3 +484,10 @@ def link_check_reporter(path):
         json.dump(bad_link_reports, f)
 
     simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
+
+    if archive or strong_archive:
+        print("Archiving links...")
+        if strong_archive:
+            archive_links(link_reports, exclude=[404])
+        elif archive:
+            archive_links(link_reports, include=[200])
