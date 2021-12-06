@@ -439,6 +439,7 @@ def archive_links(link_reports, include=None, exclude=None):
     archived = []
     not_archived = []
     not_valid_url = []
+    excluded_url = []
     link_reports_ = []
 
     # Generate a list of links we want to archive
@@ -453,6 +454,8 @@ def archive_links(link_reports, include=None, exclude=None):
             # We want all links or just included links
             if not include or status in include:
                 link_reports_.append(link_)
+        else:
+            excluded_url.append(link_)
 
     for link_ in tqdm(link_reports_):
         url, response = archive_link(link_)
@@ -466,6 +469,8 @@ def archive_links(link_reports, include=None, exclude=None):
         print(f"Archived: {url}")
     for url in not_archived:
         print(f"Not archived: {url}")
+    for url in excluded_url:
+        print(f"Excluded: {url}")
     for url in not_valid_url:
         print(f"Not valid URLs: {url}")
     
