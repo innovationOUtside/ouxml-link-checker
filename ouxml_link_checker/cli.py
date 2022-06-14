@@ -10,7 +10,8 @@ def cli():
 @click.argument('path', default='.', type=click.Path(exists=True))
 @click.option('--archive', '-a', is_flag=True, help='Archive 200-OK links')
 @click.option('--strong-archive', '-A', is_flag=True, help='Archive not 404 links')
-def link_check(path, archive, strong_archive):
+@click.option('--grab-screenshots', '-s', is_flag=True, help="Grab screenshots.")
+def link_check(path, archive, strong_archive, grab_screenshots):
 	"""Link reports for OU-XML files in specified directory."""
 	click.echo('Using file/directory: {}'.format(path))
-	link_check_reporter(path,archive, strong_archive)
+	link_check_reporter(path,archive, strong_archive, grab_screenshots)

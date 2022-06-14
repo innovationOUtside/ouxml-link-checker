@@ -23,10 +23,10 @@ There's a csv file report generated at `broken_links_report.csv` and complete re
 
 Preview of code and sample outputs of intermediate functions: [`link_checker.ipynb`](https://github.com/innovationOUtside/ouxml-link-checker/blob/main/link_checker.ipynb) (and a [preview of the same notebook](https://nbviewer.jupyter.org/github/innovationOUtside/ouxml-link-checker/blob/main/link_checker.ipynb) that actually works if/when Github tells you that *Something went wrong*...).
 
- 
+
 ## Archiving Links
 
-Call with the `--archive / -a` switch to submit URLs to the Internet Archive for archiving. Only files that generate a 200-OK in the final step will be submitted for archiving. Call with the --strong-archive / -A` flag and all URLs that do not return a 404 will be submitted for archiving. (Probably need better policies here...)
+Call with the `--archive / -a` switch to submit URLs to the Internet Archive for archiving. Only files that generate a 200-OK in the final step will be submitted for archiving. Call with the `--strong-archive / -A` flag and all URLs that do not return a 404 will be submitted for archiving. (Probably need better policies here...)
 
 ### Link Archiving API
 
@@ -65,3 +65,17 @@ Not valid URLs: http://ww.open.ac.uk/dfhje
 ```
 
 The `olc.archive_links()` function also accepts `include=LIST_OF _INTS` and `exclude=LIST_OF_INTS` parameters that govern which status codes are used to select URLs for archiving. (The empty `include` list means accept all codes except explicitly excluded codes. Excluded codes are always excluded.)
+
+
+## ScreenshootingLinks
+
+Call with the `--grab-screenshots` or `-s` flag to grab screenshots of resolved links.
+
+To grab a screenshots, the `playwright` package needs to be installed separately:
+
+```
+pip install playwright
+playwright install
+```
+
+Screenshots will be saved into an automatically created `grab_link_screenshots` directory.

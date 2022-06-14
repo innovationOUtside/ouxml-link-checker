@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="ouxml_link_checker",
     packages=['ouxml_link_checker'],
-    version='0.0.2',
+    version='0.0.3',
     author="Tony Hirst",
     author_email="tony.hirst@gmail.com",
     description="Simple link checker for OU-XML.",

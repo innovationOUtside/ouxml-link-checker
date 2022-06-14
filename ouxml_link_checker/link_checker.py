@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.11.5
+#       jupytext_version: 1.13.8
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -221,6 +221,8 @@ def extract_links_from_docs(docs):
 # - links using liblinks (of the form `https://www.open.ac.uk/libraryservices/resource/website:ID&amp;f=FID`; the `f=FID` seems redundant - what does it do?)
 #
 # *TO DO: where appropriate/informative, consider reports for the full range of [`2xx` success](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#2xx_success) reponse codes, [`3xx` redirection](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#3xx_redirection) codes, [`4xx` client error](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_client_errors) codes and [`5xx` server error](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#5xx_server_errors) codes.*
+#
+# At the moment, all links are checked, even if they are duplicates.
 
 # +
 # Run a link check on a single link
@@ -337,7 +339,10 @@ def link_reporter_by_docs(doc_links):
     doc_links_reports = []
     doc_links_nok_reports = []
     
+    unique_link_reports = {}
+    
     for doc in doc_links:
+
         doc_links_report = {'metadata': doc['metadata'], 'sessions': {}}
         doc_links_nok_report = {'metadata': doc['metadata'], 'sessions': {}}
         
@@ -345,8 +350,13 @@ def link_reporter_by_docs(doc_links):
             link_reports = []
             nok_link_reports = []
             for (title, url) in doc['sessions'][session]:
-                play_nice()
-                link_report = link_reporter(url)
+                # Only request each unique URL once
+                if url in unique_link_reports:
+                    link_report = unique_link_reports[url]
+                else:
+                    play_nice()
+                    link_report = link_reporter(url)
+                    unique_link_reports[url] = link_report
                 ok = link_report[-1][0]
                 link_reports.append( (title, url, link_report, ok))
                 
@@ -360,14 +370,17 @@ def link_reporter_by_docs(doc_links):
         doc_links_reports.append(doc_links_report)
         doc_links_nok_reports.append(doc_links_nok_report)
         
-    return doc_links_reports, doc_links_nok_reports
+    return doc_links_reports, doc_links_nok_reports, unique_link_reports
 
 
 # + tags=["active-ipynb"]
-# link_reports, bad_link_reports = link_reporter_by_docs(doc_links)
+# link_reports, bad_link_reports, unique_link_reports = link_reporter_by_docs(doc_links)
 
 # + tags=["active-ipynb"]
 # bad_link_reports
+
+# + tags=["active-ipynb"]
+# unique_link_reports
 # -
 
 # Whilst the JSON file is convenient for storing data, and easy to work with if you know how, a tabular CSV report is probably more useful in many cases.
@@ -444,17 +457,17 @@ def archive_link(url):
 #
 # Links with various HTTP status codes as described in the link check status report can be included or excluded from he report.
 
-def archive_links(link_reports, include=None, exclude=None):
-    """Submit each unique link in a link status report dictionary to the Internet Archive."""
+def get_valid_links(link_reports, include=None, exclude=None):
+    """Generate a list of valid links from a dict with URL keys and report values."""
     include = [] if include is None else include
     exclude = [] if exclude is None else exclude
-    archived = []
-    not_archived = []
     not_valid_url = []
     excluded_url = []
     link_reports_ = []
-
+    
+    print("Finding valid links for this process...")
     # Generate a list of links we want to archive
+    # Note that this is not a list of unique URLs
     for link_ in link_reports:
         # Get status report of last step in forwarded request
         status = link_reports[link_][-1][2]
@@ -468,8 +481,19 @@ def archive_links(link_reports, include=None, exclude=None):
                 link_reports_.append(link_)
         else:
             excluded_url.append(link_)
+            
+    return link_reports_, excluded_url, not_valid_url
+
+
+def archive_links(link_reports, include=None, exclude=None):
+    """Submit each unique link in a link status report dictionary to the Internet Archive."""
+    archived = []
+    not_archived = []
+
+    link_reports_, excluded_url, not_valid_url = get_valid_links(link_reports, include, exclude)
 
     for link_ in tqdm(link_reports_):
+        print(f"Archiving: {link_}")
         url, response = archive_link(link_)
         if response.ok:
             archived.append(url)
@@ -487,26 +511,90 @@ def archive_links(link_reports, include=None, exclude=None):
         print(f"Not valid URLs: {url}")
 
 
+# + tags=["active-ipynb"]
+# archive_links(unique_link_reports)
+# -
+
+# We can generate screenshots for the links:
+
+def screenshot_grabber(link_reports, include=None, exclude=None):
+    """Grab screenshots for links."""
+    import unicodedata
+    import string
+
+    valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    char_limit = 255
+
+    def clean_filename(filename, whitelist=valid_filename_chars, replace=None):
+        # replace spaces and . by default
+        replace = [" ", "."] if replace is None else replace
+        filename = filename.split("://")[-1]
+        for r in replace:
+            filename = filename.replace(r, '_')
+
+        # keep only valid ascii chars
+        cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
+
+        # keep only whitelisted chars
+        cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
+        if len(cleaned_filename)>char_limit:
+            print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
+        return cleaned_filename[:char_limit]
+
+    links, excluded_url, not_valid_url = get_valid_links(link_reports, include, exclude)
+    
+    from playwright.sync_api import sync_playwright
+    img_path = "grab_link_screenshots"
+    p = Path(img_path)
+    p.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as p:
+        browser = p.webkit.launch()
+        page = browser.new_page()
+        for shot_url in links:
+            try:
+                page.goto(shot_url)
+                page.screenshot(path=Path(img_path) / f"{clean_filename(shot_url)}.png")
+            except:
+                print(f"\t- failed to grab screenshot for {shot_url}")
+        browser.close()
+        print(f"\nScreenshots saved to {img_path}")
+
+
+# + tags=["active-ipynb"]
+# #screenshot_grabber(unique_link_reports)
+# -
+
 # We can generate the link status report for links extracted from one or more files, optionally calling the archiver, using the following function:
 
-def link_check_reporter(path, archive=False, strong_archive=False, display=False, redirect_log=True):
+def link_check_reporter(path,
+                        archive=False,
+                        strong_archive=False,
+                        grab_screenshots=False,
+                        display=False, redirect_log=True):
     """Run link checks."""
+    print("Getting files...")
     docs = get_xml_files(path)
     doc_links, unique_links = extract_links_from_docs(docs)
 
-    link_reports, bad_link_reports = link_reporter_by_docs(doc_links)
+    print("Getting link statuses for each document section...")
+    link_reports, bad_link_reports, unique_link_reports = link_reporter_by_docs(doc_links)
 
+    print("Writing status reports...")
     with open('all_links_report.json', 'w') as f:
         json.dump(link_reports, f)
-
     with open('broken_links_report.json', 'w') as f:
         json.dump(bad_link_reports, f)
-
     simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
 
     if archive or strong_archive:
         print("Archiving links...")
         if strong_archive:
-            archive_links(link_reports, exclude=[404])
+            archive_links(unique_link_reports, exclude=[404])
         elif archive:
-            archive_links(link_reports, include=[200])
+            archive_links(unique_link_reports, include=[200])
+
+    if grab_screenshots:
+        print("Screengrabbing links...")
+        screenshot_grabber(unique_link_reports, include=None, exclude=None)
+
+
