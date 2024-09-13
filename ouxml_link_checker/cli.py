@@ -14,4 +14,4 @@ def cli():
 def link_check(path, archive, strong_archive, grab_screenshots):
 	"""Link reports for OU-XML files in specified directory."""
 	click.echo('Using file/directory: {}'.format(path))
-	link_check_reporter(path,archive, strong_archive, grab_screenshots)
+	link_check_reporter(path, archive, strong_archive, grab_screenshots)

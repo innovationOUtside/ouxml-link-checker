@@ -126,12 +126,12 @@ def get_xml_from_doc(doc, clean=True):
 def parse_ouxml_metadata(courseRoot):
     """Extract some metadata from the OU-XML file."""
     _coursecode = courseRoot.find('.//CourseCode')
-    coursecode = flatten(_coursecode)
+    coursecode = flatten(_coursecode).strip()
     _coursetitle = courseRoot.find('.//CourseTitle')
-    coursetitle = flatten(_coursetitle)
+    coursetitle = flatten(_coursetitle).strip()
 
     _itemtitle = courseRoot.find('.//ItemTitle')
-    itemtitle = flatten(_itemtitle)
+    itemtitle = flatten(_itemtitle).strip()
 
     metadata = {'coursecode': coursecode,
                 'coursetitle': coursetitle,
@@ -151,24 +151,33 @@ def extract_links_from_doc(courseRoot, unique_links=None):
     
     for session in sessions:
         _links = []
-        session_title = flatten(session.find('.//Title'))
+        session_title = flatten(session.find('.//Title')).strip()
         
         for l in session.findall('.//a'):
-            _lhref = l.get('href').replace('.libezproxy.open.ac.uk','')
+            href = l.get("href")
+            if not href:
+                #print(f"WTF? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
+                continue
+            _lhref = href.replace('.libezproxy.open.ac.uk','')
             if l not in unique_links:
                 unique_links.append(_lhref)
-                _links.append((flatten(l), _lhref))
+                _links.append((flatten(l).strip(), _lhref))
 
         links[session_title] = _links
 
     # <BackMatter>
     backmatter = courseRoot.find('.//BackMatter')
     _links = []
-    for l in backmatter.findall('.//a'):
-        _lhref = l.get('href').replace('.libezproxy.open.ac.uk','')
-        if l not in unique_links:
-            unique_links.append(_lhref)
-            _links.append((flatten(l), _lhref))
+    if backmatter is not None:
+        for l in backmatter.findall('.//a'):
+            href = l.get("href")
+            if not href:
+                #print(f"WTF2? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
+                continue
+            _lhref = href.replace('.libezproxy.open.ac.uk','')
+            if l not in unique_links:
+                unique_links.append(_lhref)
+                _links.append((flatten(l).strip(), _lhref))
     links['BackMatter'] = _links
     
     doc_links = {'metadata': metadata, 'sessions': links}
@@ -242,6 +251,14 @@ def link_reporter(url, display=False, redirect_log=True):
     
     if r is None:
         return [(False, url, None, "Error resolving URL")]
+
+    # TO DO - tidy this all up;
+    # - pass back response then call a response parser?
+    #  - if we have a 302, recommend a move to the final response
+    #  - if we fail and http, try https; if that works, recommend updates;
+    #  - generate a file of recommended updates and a tool to apply them
+    #if response.status_code == 302:
+    #    redirected_url = response.headers.get('Location')
 
     # Optionally create a report including each step of redirection/resolution
     steps = r.history + [r] if redirect_log else [r]
@@ -342,11 +359,13 @@ def link_reporter_by_docs(doc_links):
     unique_link_reports = {}
     
     for doc in doc_links:
-
+        print("Trying a new doc...")
         doc_links_report = {'metadata': doc['metadata'], 'sessions': {}}
         doc_links_nok_report = {'metadata': doc['metadata'], 'sessions': {}}
         
-        for session in tqdm(doc['sessions']):
+        #for session in tqdm(doc['sessions']):
+        for session in doc['sessions']:
+            print(f"new session, {len(doc['sessions'][session])} urls ")
             link_reports = []
             nok_link_reports = []
             for (title, url) in doc['sessions'][session]:
@@ -355,6 +374,7 @@ def link_reporter_by_docs(doc_links):
                     link_report = unique_link_reports[url]
                 else:
                     play_nice()
+                    print(f"trying {url}")
                     link_report = link_reporter(url)
                     unique_link_reports[url] = link_report
                 ok = link_report[-1][0]
@@ -363,13 +383,14 @@ def link_reporter_by_docs(doc_links):
                 if not ok:
                     nok_link_reports.append( (title, url, link_report, ok))
 
+
             doc_links_report['sessions'][session] = link_reports
             if nok_link_reports:
                 doc_links_nok_report['sessions'][session] = nok_link_reports
 
         doc_links_reports.append(doc_links_report)
         doc_links_nok_reports.append(doc_links_nok_report)
-        
+        print("doc done...")
     return doc_links_reports, doc_links_nok_reports, unique_link_reports
 
 
