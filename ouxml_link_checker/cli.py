@@ -21,7 +21,21 @@ def link_check(path, archive, strong_archive, grab_screenshots):
 @cli.command()
 @click.argument("path", default="broken_links_report.json", type=click.Path(exists=True))
 def create_report(path):
-	"""Create a report and save it to the specified file path."""
-	with open(path, 'r') as f:
-		links_report = json.load(f)
-	simple_csv_report(links_report, outf="generated_report.csv")
+    """Create a report and save it to the specified file path."""
+    with open(path, 'r') as f:
+        links_report = json.load(f)
+    simple_csv_report(links_report, outf="generated_report.csv")
+
+from .link_checker import extract_redirects, write_redirects_report
+
+
+@cli.command()
+@click.argument(
+    "path", default="all_links_report.json", type=click.Path(exists=True)
+)
+def redirects_report(path):
+    """Create a  redirectsreport and save it to the specified file path."""
+    with open(path, "r") as f:
+        links_report = json.load(f)
+    redirects = extract_redirects(links_report)
+    write_redirects_report(redirects, "redirect_report.csv")

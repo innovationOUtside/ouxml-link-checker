@@ -619,3 +619,44 @@ def link_check_reporter(path,
     if grab_screenshots:
         print("Screengrabbing links...")
         screenshot_grabber(unique_link_reports, include=None, exclude=None)
+
+
+# Via Claude.ai, then corrected
+from typing import List, Dict, Any
+
+
+def extract_redirects(data: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    redirects = []
+    for item in data:
+        metadata = item["metadata"]
+        for session, session_links in item["sessions"].items():
+            for link_info in session_links:
+                # links are the redirects/success links chain
+                links = link_info[2]
+                if len(links) >= 2 and links[-1][2]==200:
+                    old_url = links[0][1]
+                    for _link in links:
+                        if _link[0] and _link[2] == 301:
+                            redirects.append(
+                                {
+                                    "itemtitle": metadata["itemtitle"],
+                                    "file": metadata["file"],
+                                    "session": session,
+                                    "old_url": old_url,
+                                    "new_url": links[-1][1],
+                                }
+                            )
+                            break
+    return redirects
+
+
+def write_redirects_report(
+    redirects: List[Dict[str, str]], filename: str = "redirect_report.csv"
+):
+    with open(filename, "w", newline="") as csvfile:
+        fieldnames = ["itemtitle", "file", "session", "old_url", "new_url"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for redirect in redirects:
+            writer.writerow(redirect)
