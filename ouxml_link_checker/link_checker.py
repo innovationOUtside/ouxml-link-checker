@@ -238,17 +238,17 @@ def extract_links_from_docs(docs):
 
 import requests
 
-def link_reporter(url, display=False, redirect_log=True):
+def link_reporter(url, display=False, redirect_log=True, timeout=10):
     """Attempt to resolve a URL and report on how it was resolved."""
     if display:
         print(f"Checking {url}...")
-    
+
     # Make request and follow redirects
     try:
-        r = requests.head(url, allow_redirects=True)
+        r = requests.head(url, allow_redirects=True, timeout=timeout)
     except:
         r = None
-    
+
     if r is None:
         return [(False, url, None, "Error resolving URL")]
 
@@ -257,12 +257,12 @@ def link_reporter(url, display=False, redirect_log=True):
     #  - if we have a 302, recommend a move to the final response
     #  - if we fail and http, try https; if that works, recommend updates;
     #  - generate a file of recommended updates and a tool to apply them
-    #if response.status_code == 302:
+    # if response.status_code == 302:
     #    redirected_url = response.headers.get('Location')
 
     # Optionally create a report including each step of redirection/resolution
     steps = r.history + [r] if redirect_log else [r]
-    
+
     step_reports = []
     for step in steps:
         step_report = (step.ok, step.url, step.status_code, step.reason)
@@ -344,7 +344,6 @@ def dead_link_report(link_reports):
     return dead_links
 
 
-
 # + tags=["active-ipynb"]
 # dead_link_report(link_reports)
 # -
@@ -420,7 +419,7 @@ def simple_csv_report(links_report, outf='link_report.csv'):
         write = csv.writer(f)
         cols = ['file', 'code', 'title', 'item', 'session', 'linktext', 'link', 'error']
         write.writerow(cols)
-
+        big_rows = []
         for link_report in links_report:
             row_base = [link_report['metadata']['file'],
                         link_report['metadata']['coursecode'],
@@ -432,8 +431,9 @@ def simple_csv_report(links_report, outf='link_report.csv'):
                 for link in link_report['sessions'][session]:
                     row = row_base + [session, link[0], link[1], link[2][-1][-2]]
                     rows.append(row)
- 
-            write.writerows(rows) 
+            big_rows = big_rows+rows
+        sorted_rows=sorted(big_rows, key=lambda x: x[0])
+        write.writerows(sorted_rows)
 
 
 # + tags=["active-ipynb"]
@@ -463,7 +463,7 @@ import json
 import urllib.parse
 
 def archive_link(url):
-    """Submit link archive request to Interet Archive."""
+    """Submit link archive request to Internet Archive."""
 
     quoted_url = urllib.parse.quote(url)
     url_ = f"https://web.archive.org/save/{quoted_url}"
@@ -603,6 +603,8 @@ def link_check_reporter(path,
     print("Writing status reports...")
     with open('all_links_report.json', 'w') as f:
         json.dump(link_reports, f)
+    simple_csv_report(link_reports, outf="all_links_report.csv")
+
     with open('broken_links_report.json', 'w') as f:
         json.dump(bad_link_reports, f)
     simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
@@ -617,5 +619,3 @@ def link_check_reporter(path,
     if grab_screenshots:
         print("Screengrabbing links...")
         screenshot_grabber(unique_link_reports, include=None, exclude=None)
-
-
