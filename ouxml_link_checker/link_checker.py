@@ -30,14 +30,16 @@
 
 import unicodedata
 
+
 def flatten(el):
-    ''' Utility function for flattening XML tags. '''
-    if el is None: return
-    result = [ (el.text or "") ]
+    """Utility function for flattening XML tags."""
+    if el is None:
+        return
+    result = [(el.text or "")]
     for sel in el:
         result.append(flatten(sel))
         result.append(sel.tail or "")
-    return unicodedata.normalize("NFKD", "".join(result)) or ' '
+    return unicodedata.normalize("NFKD", "".join(result)) or " "
 
 
 # -
@@ -53,10 +55,11 @@ def flatten(el):
 import time
 from random import random
 
+
 def play_nice(delay=0.1, min_delay=0.01):
     """Add a random delay between consecutive web requests."""
     # It would probably make more sense to do this to throttle multiple requests to the same domain
-    time.sleep(min_delay + delay*random())
+    time.sleep(min_delay + delay * random())
 
 
 # -
@@ -69,9 +72,10 @@ def play_nice(delay=0.1, min_delay=0.01):
 import os
 from pathlib import Path
 
-def get_xml_files(path_str='.', suffix='.xml'):
+
+def get_xml_files(path_str=".", suffix=".xml"):
     path = Path(path_str)
-    docs = [path/x for x in os.listdir(path) if x.endswith(suffix)]
+    docs = [path / x for x in os.listdir(path) if x.endswith(suffix)]
     return docs
 
 
@@ -96,18 +100,21 @@ from tqdm import tqdm
 
 from lxml import etree
 
+
 def get_xml_from_doc(doc, clean=True):
     """Read file and parse as XML object."""
     xml = doc.read_text()
-    
+
     if clean:
-        for cleaner in ['<?sc-transform-do-oumusic-to-unicode?>',
-                        '<?sc-transform-do-oxy-pi?>',
-                        '<?xml version="1.0" encoding="utf-8"?>',
-                        '<?xml version="1.0" encoding="UTF-8"?>',
-                        '<?xml version="1.0" encoding="UTF-8" standalone="no"?>']:
-            xml = xml.replace(cleaner, '')
-            
+        for cleaner in [
+            "<?sc-transform-do-oumusic-to-unicode?>",
+            "<?sc-transform-do-oxy-pi?>",
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+        ]:
+            xml = xml.replace(cleaner, "")
+
     xml_root = etree.fromstring(xml)
     return xml_root
 
@@ -123,20 +130,22 @@ def get_xml_from_doc(doc, clean=True):
 # +
 # Extract metadata and links from a parsed OU-XML document
 
+
 def parse_ouxml_metadata(courseRoot):
     """Extract some metadata from the OU-XML file."""
-    _coursecode = courseRoot.find('.//CourseCode')
+    _coursecode = courseRoot.find(".//CourseCode")
     coursecode = flatten(_coursecode).strip()
-    _coursetitle = courseRoot.find('.//CourseTitle')
+    _coursetitle = courseRoot.find(".//CourseTitle")
     coursetitle = flatten(_coursetitle).strip()
 
-    _itemtitle = courseRoot.find('.//ItemTitle')
+    _itemtitle = courseRoot.find(".//ItemTitle")
     itemtitle = flatten(_itemtitle).strip()
 
-    metadata = {'coursecode': coursecode,
-                'coursetitle': coursetitle,
-                'itemtitle': itemtitle,
-               }
+    metadata = {
+        "coursecode": coursecode,
+        "coursetitle": coursetitle,
+        "itemtitle": itemtitle,
+    }
     return metadata
 
 
@@ -147,18 +156,18 @@ def extract_links_from_doc(courseRoot, unique_links=None):
 
     # Grab some metadata
     metadata = parse_ouxml_metadata(courseRoot)
-    sessions = courseRoot.findall('.//Session')
-    
+    sessions = courseRoot.findall(".//Session")
+
     for session in sessions:
         _links = []
-        session_title = flatten(session.find('.//Title')).strip()
-        
-        for l in session.findall('.//a'):
+        session_title = flatten(session.find(".//Title")).strip()
+
+        for l in session.findall(".//a"):
             href = l.get("href")
             if not href:
-                #print(f"WTF? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
+                # print(f"WTF? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
                 continue
-            _lhref = href.replace('.libezproxy.open.ac.uk','')
+            _lhref = href.replace(".libezproxy.open.ac.uk", "")
             if l not in unique_links:
                 unique_links.append(_lhref)
                 _links.append((flatten(l).strip(), _lhref))
@@ -166,22 +175,22 @@ def extract_links_from_doc(courseRoot, unique_links=None):
         links[session_title] = _links
 
     # <BackMatter>
-    backmatter = courseRoot.find('.//BackMatter')
+    backmatter = courseRoot.find(".//BackMatter")
     _links = []
     if backmatter is not None:
-        for l in backmatter.findall('.//a'):
+        for l in backmatter.findall(".//a"):
             href = l.get("href")
             if not href:
-                #print(f"WTF2? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
+                # print(f"WTF2? {href} {etree.tostring(l, pretty_print=True, encoding='utf-8', method='xml').decode()}")
                 continue
-            _lhref = href.replace('.libezproxy.open.ac.uk','')
+            _lhref = href.replace(".libezproxy.open.ac.uk", "")
             if l not in unique_links:
                 unique_links.append(_lhref)
                 _links.append((flatten(l).strip(), _lhref))
-    links['BackMatter'] = _links
-    
-    doc_links = {'metadata': metadata, 'sessions': links}
-    
+    links["BackMatter"] = _links
+
+    doc_links = {"metadata": metadata, "sessions": links}
+
     return doc_links, unique_links
 
 
@@ -199,6 +208,7 @@ def extract_links_from_doc(courseRoot, unique_links=None):
 # +
 # Extract all the links from a set of documents
 
+
 def extract_links_from_docs(docs):
     """Process a set of OU-XML documents and extract unique links from them all."""
     docs = docs if isinstance(docs, list) else [docs]
@@ -207,9 +217,9 @@ def extract_links_from_docs(docs):
     for doc in docs:
         xml = get_xml_from_doc(doc)
         _doc_links, unique_links = extract_links_from_doc(xml, unique_links)
-        _doc_links['metadata']['file'] = str(doc)
+        _doc_links["metadata"]["file"] = str(doc)
         doc_links.append(_doc_links)
-        
+
     return doc_links, unique_links
 
 
@@ -237,20 +247,39 @@ def extract_links_from_docs(docs):
 # Run a link check on a single link
 
 import requests
+from requests.exceptions import ConnectionError, Timeout, RequestException
+
 
 def link_reporter(url, display=False, redirect_log=True, timeout=10):
     """Attempt to resolve a URL and report on how it was resolved."""
     if display:
         print(f"Checking {url}...")
 
+    r = None
+    _r = {}
+
     # Make request and follow redirects
     try:
         r = requests.head(url, allow_redirects=True, timeout=timeout)
+    except ConnectionError as e:
+        _r["error"] = {"type": "ConnectionError", "message": str(e)}
+        r = None
+    except Timeout as e:
+        _r["error"] = {"type": "Timeout", "message": str(e)}
+        r = None
+    except RequestException as e:
+        _r["error"] = {"type": "RequestException", "message": str(e)}
+        r = None
     except:
         r = None
 
     if r is None:
-        return [(False, url, None, "Error resolving URL")]
+        if _r:
+            return [
+                (False, url, None, f"{_r['error']['type']} :: {_r['error']['message']}")
+            ]
+        else:
+            return [(False, url, None, "Error resolving URL")]
 
     # TO DO - tidy this all up;
     # - pass back response then call a response parser?
@@ -266,9 +295,11 @@ def link_reporter(url, display=False, redirect_log=True, timeout=10):
     step_reports = []
     for step in steps:
         step_report = (step.ok, step.url, step.status_code, step.reason)
-        step_reports.append( step_report )
+        step_reports.append(step_report)
         if display:
-            txt_report = f'\tok={step.ok} :: {step.url} :: {step.status_code} :: {step.reason}\n'
+            txt_report = (
+                f"\tok={step.ok} :: {step.url} :: {step.status_code} :: {step.reason}\n"
+            )
             print(txt_report)
 
     return step_reports
@@ -304,18 +335,19 @@ def link_reporter(url, display=False, redirect_log=True, timeout=10):
 # +
 # Run link checks over a set of links
 
+
 def check_multiple_links(urls, display=False, redirect_log=True):
     """Check multiple links."""
-    
+
     # Use unique links
     urls = list(set(urls)) if isinstance(urls, list) else [urls]
-    
+
     link_reports = {}
     for url in tqdm(urls):
         play_nice()
         link_report = link_reporter(url, display, redirect_log)
         link_reports[url] = link_report
-        
+
     return link_reports
 
 
@@ -332,10 +364,11 @@ def check_multiple_links(urls, display=False, redirect_log=True):
 # +
 # Find dead links
 
+
 def dead_link_report(link_reports):
     """Create a list of dead links."""
     dead_links = {}
-    
+
     for link in link_reports:
         link_report = link_reports[link]
         if not link_report[-1][0]:
@@ -350,24 +383,25 @@ def dead_link_report(link_reports):
 
 # We can also create a report per document. This is perhaps more useful because we can see which sections contain which dead links, if any.
 
+
 def link_reporter_by_docs(doc_links):
     """Link reports by document."""
     doc_links_reports = []
     doc_links_nok_reports = []
-    
+
     unique_link_reports = {}
-    
+
     for doc in doc_links:
         print("Trying a new doc...")
-        doc_links_report = {'metadata': doc['metadata'], 'sessions': {}}
-        doc_links_nok_report = {'metadata': doc['metadata'], 'sessions': {}}
-        
-        #for session in tqdm(doc['sessions']):
-        for session in doc['sessions']:
+        doc_links_report = {"metadata": doc["metadata"], "sessions": {}}
+        doc_links_nok_report = {"metadata": doc["metadata"], "sessions": {}}
+
+        # for session in tqdm(doc['sessions']):
+        for session in doc["sessions"]:
             print(f"new session, {len(doc['sessions'][session])} urls ")
             link_reports = []
             nok_link_reports = []
-            for (title, url) in doc['sessions'][session]:
+            for title, url in doc["sessions"][session]:
                 # Only request each unique URL once
                 if url in unique_link_reports:
                     link_report = unique_link_reports[url]
@@ -377,15 +411,14 @@ def link_reporter_by_docs(doc_links):
                     link_report = link_reporter(url)
                     unique_link_reports[url] = link_report
                 ok = link_report[-1][0]
-                link_reports.append( (title, url, link_report, ok))
-                
+                link_reports.append((title, url, link_report, ok))
+
                 if not ok:
-                    nok_link_reports.append( (title, url, link_report, ok))
+                    nok_link_reports.append((title, url, link_report, ok))
 
-
-            doc_links_report['sessions'][session] = link_reports
+            doc_links_report["sessions"][session] = link_reports
             if nok_link_reports:
-                doc_links_nok_report['sessions'][session] = nok_link_reports
+                doc_links_nok_report["sessions"][session] = nok_link_reports
 
         doc_links_reports.append(doc_links_report)
         doc_links_nok_reports.append(doc_links_nok_report)
@@ -412,27 +445,30 @@ def link_reporter_by_docs(doc_links):
 
 import csv
 
-def simple_csv_report(links_report, outf='link_report.csv'):
+
+def simple_csv_report(links_report, outf="link_report.csv"):
     """Generate a simple CSV link check report."""
 
-    with open(outf, 'w') as f:
+    with open(outf, "w") as f:
         write = csv.writer(f)
-        cols = ['file', 'code', 'title', 'item', 'session', 'linktext', 'link', 'error']
+        cols = ["file", "code", "title", "item", "session", "linktext", "link", "error"]
         write.writerow(cols)
         big_rows = []
         for link_report in links_report:
-            row_base = [link_report['metadata']['file'],
-                        link_report['metadata']['coursecode'],
-                        link_report['metadata']['coursetitle'],
-                        link_report['metadata']['itemtitle']]
+            row_base = [
+                link_report["metadata"]["file"],
+                link_report["metadata"]["coursecode"],
+                link_report["metadata"]["coursetitle"],
+                link_report["metadata"]["itemtitle"],
+            ]
 
             rows = []
-            for session in link_report['sessions']:
-                for link in link_report['sessions'][session]:
+            for session in link_report["sessions"]:
+                for link in link_report["sessions"][session]:
                     row = row_base + [session, link[0], link[1], link[2][-1][-2]]
                     rows.append(row)
-            big_rows = big_rows+rows
-        sorted_rows=sorted(big_rows, key=lambda x: x[0])
+            big_rows = big_rows + rows
+        sorted_rows = sorted(big_rows, key=lambda x: x[0])
         write.writerows(sorted_rows)
 
 
@@ -462,6 +498,7 @@ def simple_csv_report(links_report, outf='link_report.csv'):
 import json
 import urllib.parse
 
+
 def archive_link(url):
     """Submit link archive request to Internet Archive."""
 
@@ -478,6 +515,7 @@ def archive_link(url):
 #
 # Links with various HTTP status codes as described in the link check status report can be included or excluded from he report.
 
+
 def get_valid_links(link_reports, include=None, exclude=None):
     """Generate a list of valid links from a dict with URL keys and report values."""
     include = [] if include is None else include
@@ -485,7 +523,7 @@ def get_valid_links(link_reports, include=None, exclude=None):
     not_valid_url = []
     excluded_url = []
     link_reports_ = []
-    
+
     print("Finding valid links for this process...")
     # Generate a list of links we want to archive
     # Note that this is not a list of unique URLs
@@ -502,7 +540,7 @@ def get_valid_links(link_reports, include=None, exclude=None):
                 link_reports_.append(link_)
         else:
             excluded_url.append(link_)
-            
+
     return link_reports_, excluded_url, not_valid_url
 
 
@@ -511,7 +549,9 @@ def archive_links(link_reports, include=None, exclude=None):
     archived = []
     not_archived = []
 
-    link_reports_, excluded_url, not_valid_url = get_valid_links(link_reports, include, exclude)
+    link_reports_, excluded_url, not_valid_url = get_valid_links(
+        link_reports, include, exclude
+    )
 
     for link_ in tqdm(link_reports_):
         print(f"Archiving: {link_}")
@@ -538,6 +578,7 @@ def archive_links(link_reports, include=None, exclude=None):
 
 # We can generate screenshots for the links:
 
+
 def screenshot_grabber(link_reports, include=None, exclude=None):
     """Grab screenshots for links."""
     import unicodedata
@@ -551,20 +592,27 @@ def screenshot_grabber(link_reports, include=None, exclude=None):
         replace = [" ", "."] if replace is None else replace
         filename = filename.split("://")[-1]
         for r in replace:
-            filename = filename.replace(r, '_')
+            filename = filename.replace(r, "_")
 
         # keep only valid ascii chars
-        cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode()
+        cleaned_filename = (
+            unicodedata.normalize("NFKD", filename).encode("ASCII", "ignore").decode()
+        )
 
         # keep only whitelisted chars
-        cleaned_filename = ''.join(c for c in cleaned_filename if c in whitelist)
-        if len(cleaned_filename)>char_limit:
-            print("Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(char_limit))
+        cleaned_filename = "".join(c for c in cleaned_filename if c in whitelist)
+        if len(cleaned_filename) > char_limit:
+            print(
+                "Warning, filename truncated because it was over {}. Filenames may no longer be unique".format(
+                    char_limit
+                )
+            )
         return cleaned_filename[:char_limit]
 
     links, excluded_url, not_valid_url = get_valid_links(link_reports, include, exclude)
-    
+
     from playwright.sync_api import sync_playwright
+
     img_path = "grab_link_screenshots"
     p = Path(img_path)
     p.mkdir(parents=True, exist_ok=True)
@@ -587,27 +635,33 @@ def screenshot_grabber(link_reports, include=None, exclude=None):
 
 # We can generate the link status report for links extracted from one or more files, optionally calling the archiver, using the following function:
 
-def link_check_reporter(path,
-                        archive=False,
-                        strong_archive=False,
-                        grab_screenshots=False,
-                        display=False, redirect_log=True):
+
+def link_check_reporter(
+    path,
+    archive=False,
+    strong_archive=False,
+    grab_screenshots=False,
+    display=False,
+    redirect_log=True,
+):
     """Run link checks."""
     print("Getting files...")
     docs = get_xml_files(path)
     doc_links, unique_links = extract_links_from_docs(docs)
 
     print("Getting link statuses for each document section...")
-    link_reports, bad_link_reports, unique_link_reports = link_reporter_by_docs(doc_links)
+    link_reports, bad_link_reports, unique_link_reports = link_reporter_by_docs(
+        doc_links
+    )
 
     print("Writing status reports...")
-    with open('all_links_report.json', 'w') as f:
+    with open("all_links_report.json", "w") as f:
         json.dump(link_reports, f)
     simple_csv_report(link_reports, outf="all_links_report.csv")
 
-    with open('broken_links_report.json', 'w') as f:
+    with open("broken_links_report.json", "w") as f:
         json.dump(bad_link_reports, f)
-    simple_csv_report(bad_link_reports, outf='broken_links_report.csv')
+    simple_csv_report(bad_link_reports, outf="broken_links_report.csv")
 
     if archive or strong_archive:
         print("Archiving links...")
@@ -633,7 +687,7 @@ def extract_redirects(data: List[Dict[str, Any]]) -> List[Dict[str, str]]:
             for link_info in session_links:
                 # links are the redirects/success links chain
                 links = link_info[2]
-                if len(links) >= 2 and links[-1][2]==200:
+                if len(links) >= 2 and links[-1][2] == 200:
                     old_url = links[0][1]
                     for _link in links:
                         if _link[0] and _link[2] == 301:
